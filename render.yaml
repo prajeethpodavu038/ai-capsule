@@ -1,0 +1,32 @@
+# Render "Blueprint" for AI Capsule.
+# You can either click-deploy manually (see README) or use this file with
+# Render's "New +" -> "Blueprint" option, then fill in the secret values
+# it lists as sync: false.
+services:
+  - type: web
+    name: ai-capsule
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false # set your own long random value in the Render dashboard
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CALLBACK_URL
+        value: https://ai-capsule.onrender.com/auth/github/callback # update to match your actual Render URL
+      - key: APP_BASE_URL
+        value: https://ai-capsule.onrender.com # update to match your actual Render URL
+      - key: DB_PATH
+        value: ./data/ai_capsule.sqlite3
+    # No persistent disk is attached: this deploys on Render's FREE web
+    # service plan, which only offers local (ephemeral) disk. SQLite works,
+    # but data does not survive a restart/redeploy. See README "Storage"
+    # section. If you want data to persist, attach a paid Render Disk (or a
+    # managed Postgres instance) and update DB_PATH / the storage layer
+    # accordingly - not required by the assignment.
