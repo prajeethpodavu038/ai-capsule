@@ -3,21 +3,16 @@
 A small full-stack CRUD application for saving and reviewing AI prompts, built for
 Assignment 3 (CSE3CWA / CSE5006). React frontend, Node/Express backend, SQLite storage,
 GitHub OAuth login, and an application JWT stored in a Secure, HttpOnly cookie.
-
-> **Before you submit:** this README has a few `TODO (you)` markers below for the two
-> things only you can do from your own accounts — creating the GitHub OAuth App and
-> deploying to Render. Everything else (code, tests, this document, the video script)
-> is finished. See **"What's left for you to do"** near the bottom for the exact steps.
-
 ---
 
 ## 1. Deployed application
 
 | | |
 |---|---|
-| **Public URL** | `TODO (you): https://YOUR-APP-NAME.onrender.com` |
+| **Public URL** | `https://ai-capsule-f4j4.onrender.com` |
+
 | **Cloud platform** | Render (free Web Service plan) |
-| **Repository** | `TODO (you): your GitHub repo URL, if you push one` |
+| **Repository** | `https://github.com/prajeethpodavu038/ai-capsule` |
 
 ---
 
@@ -236,30 +231,25 @@ curl -i -H "Cookie: token=fake-token-123" https://YOUR-APP/api/capsules
 # Required: 401 Unauthorized
 ```
 
-**Results obtained locally** (`http://localhost:4000`, before deployment — used to
-verify the middleware; `TODO (you)`: re-run both against your deployed URL after
-Section 13's deploy steps, and paste those results here, replacing this block):
+**Results obtained locally** **Results obtained against the deployed Render URL**
 
-```
-$ curl -i http://localhost:4000/api/capsules
-HTTP/1.1 401 Unauthorized
-Content-Type: application/json; charset=utf-8
+Test 1 — no authentication:
 
-{"error":"Unauthorized: no session token"}
+    curl.exe -i https://ai-capsule-f4j4.onrender.com/api/capsules
 
-$ curl -i -H "Cookie: token=fake-token-123" http://localhost:4000/api/capsules
-HTTP/1.1 401 Unauthorized
-Content-Type: application/json; charset=utf-8
+    HTTP/1.1 401 Unauthorized
 
-{"error":"Unauthorized: invalid or expired session token"}
-```
+    {"error":"Unauthorized: no session token"}
 
-Both return `401 Unauthorized` and no capsule data, as required. Test 1 confirms
-authentication is required at all; Test 2 confirms the middleware actually verifies
-the JWT signature rather than just checking a cookie is present — `fake-token-123`
-fails `jwt.verify()` and is rejected the same way an empty request is.
+Test 2 — fake / invalid JWT:
 
----
+    curl.exe -i -H "Cookie: token=fake-token-123" https://ai-capsule-f4j4.onrender.com/api/capsules
+
+    HTTP/1.1 401 Unauthorized
+
+    {"error":"Unauthorized: invalid or expired session token"}
+
+Both deployed tests returned 401 Unauthorized as required. Test 1 confirms that authentication is required, while Test 2 confirms that an invalid JWT is rejected rather than merely accepting the presence of a cookie.
 
 ## 9. Required application behaviour — how it was verified
 
@@ -282,11 +272,7 @@ fails `jwt.verify()` and is rejected the same way an empty request is.
   through the real form → edit it → delete it with the confirm dialog → sign out →
   confirmed `/dashboard` is blocked again). This exercised the real click/submit/fetch
   path a marker would use, not just direct API calls.
-- **OAuth login itself** (the GitHub redirect → callback → cookie-issuance path) can
-  only be fully exercised with a real GitHub OAuth App and a real browser, since it
-  requires a live redirect through github.com — that part is demonstrated live in the
-  video (Section 13) rather than by an automated script, along with a fresh video
-  cURL run against the deployed URL as required by the brief.
+ OAuth login itself was verified manually through the deployed Render application using the configured GitHub OAuth App. The deployed application successfully redirected to GitHub, returned to the application, established the authenticated session, and opened the protected dashboard. The two required deployed cURL security tests were also run manually and both returned 401 Unauthorized. These results will be demonstrated in the submitted video.
 
 Running `npm test` locally (after `npm install`, `npm start` in one terminal, `npm
 test` in another) reproduces all of the above except the live GitHub redirect.
@@ -306,7 +292,7 @@ caller that a record with that `id` *exists*, just belongs to someone else, whic
 minor information leak about other users' data. Returning `404` for "not yours" and
 "doesn't exist" alike avoids leaking that. The automated test suite (`api.test.js`)
 locks this in — the cross-user `PUT`/`DELETE` assertions specifically check for `404`.
-
+A real deployment configuration problem was also found and corrected during cloud deployment. Render initially used Node.js 26, and better-sqlite3 failed to install because a compatible prebuilt binary was unavailable and the native build failed. The deployment was corrected by explicitly setting NODE_VERSION=22.22.0 in Render. A second deployment configuration issue occurred when the SQLite database path was set to /var/data on the Render Free Web Service, which does not provide a persistent disk. The DB_PATH was changed to ./data/ai_capsule.sqlite3, allowing the application to deploy on the free service. The assignment brief permits this approach and requires the temporary-storage limitation to be documented.
 **One implementation decision I can explain independently:** Express **4.19** was
 pinned deliberately rather than using Express 5. The SPA fallback route (serving
 `index.html` for any non-`/api` `GET`, so React Router can handle client-side
@@ -340,43 +326,3 @@ refresh-token rotation, so a signed-in user simply stays signed in until the coo
 expires or they hit "Sign out"; there is no server-side session revocation list.)*
 
 ---
-
-## 12. What's left for you to do
-
-Everything above is finished, tested locally (17/17 automated checks + a full
-browser-driven create/edit/delete run), and ready to deploy. Two things need your own
-accounts and can't be done from here:
-
-### A. Create a GitHub OAuth App
-1. Go to <https://github.com/settings/developers> → **OAuth Apps** → **New OAuth App**.
-2. **Homepage URL:** your future Render URL, e.g. `https://ai-capsule-sathwik.onrender.com`
-3. **Authorization callback URL:** the same URL + `/auth/github/callback`, e.g.
-   `https://ai-capsule-sathwik.onrender.com/auth/github/callback`
-   (you can register the app first, deploy, confirm the real Render URL, then edit this
-   field to match exactly — it must match byte-for-byte).
-4. Generate a **Client Secret**. Copy the Client ID and Client Secret somewhere safe —
-   you'll paste them into Render's environment variables, never into this repo.
-
-### B. Deploy to Render
-1. Push this project to a GitHub repository (node_modules, dist and .env are already
-   git-ignored).
-2. In Render: **New +** → **Web Service** → connect your repo.
-3. **Build Command:** `npm install && npm run build`
-4. **Start Command:** `npm start`
-5. Add environment variables (Render dashboard → Environment): `NODE_ENV=production`,
-   `JWT_SECRET` (generate one, e.g. `openssl rand -hex 32`), `GITHUB_CLIENT_ID`,
-   `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL`, `APP_BASE_URL`, `DB_PATH` — see
-   Section 6 for what each does. (`render.yaml` in this repo lists the same variables
-   if you prefer Render's "Blueprint" deploy option instead of clicking through
-   manually.)
-6. Deploy. Once live, note the real `https://YOUR-APP.onrender.com` URL, go back to the
-   GitHub OAuth App settings and make sure the callback URL matches exactly.
-7. Fill in Section 1's URL/platform line, and Section 8's "results obtained" block with
-   a fresh run of both cURL commands against the real deployed URL.
-8. Follow `VIDEO_SCRIPT.md` to record the 3–5 minute demo, then submit the source ZIP
-   + MP4 to the LMS.
-
-If GitHub OAuth gives you trouble in your specific environment, the assignment brief
-explicitly allows a Google OAuth fallback (no prior approval needed, just note it
-here) — but the code in this repo implements GitHub, since GitHub OAuth is what's
-strongly recommended and is the one demonstrated in the reference lab.
